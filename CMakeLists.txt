@@ -25,6 +25,6 @@ catkin_package()
 
 
 # ------------------------------Excute Node-------------------------------------------------
-add_executable(test_node_vrep src/test_main_vrep.cpp)
-target_link_libraries(test_node_vrep vrep_husky_control ${catkin_LIBRARIES})
+add_executable(husky_controller src/main.cpp)
+target_link_libraries(husky_controller vrep_husky_control ${catkin_LIBRARIES})
 # ------------------------------Excute Node End-------------------------------------------------
