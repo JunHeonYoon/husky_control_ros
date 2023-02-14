@@ -1,16 +1,18 @@
 #include "husky_controller.h"
 
 
-controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
-    rate_(hz_)
+controller_interface::controller_interface(ros::NodeHandle nh_,double hz):
+    rate_(hz)
   {    
     is_first_run = true;
     tick = 0;
+    tick_init = 0;
     sim_step_done_ = false;
     sim_time_ = 0.0f;
+    hz_ = hz;
     pose_.resize(3);
     pose_.setZero();
-    velocity_.resize(2);
+    velocity_.resize(3);
     velocity_.setZero();
     cmd_vel_.linear.x = 0;
     cmd_vel_.linear.y = 0;
@@ -29,9 +31,31 @@ controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
     odom_subscriber_ = nh_.subscribe("/husky_velocity_controller/odom", 1, &controller_interface::odomCallback, this);
     vrep_sim_time_sub_ = nh_.subscribe("/simulationTime",100,&controller_interface::sim_time_cb,this);
     vrep_sim_status_sub_ = nh_.subscribe("/simulationState",100,&controller_interface::sim_status_cb,this);
+
+    initFile();
   }
   controller_interface::~controller_interface()
   {
+  }
+
+  void controller_interface::initFile()
+  {
+    for (int i = 0; i < NUM_FILES; i++)
+      {
+        files_[i].open(file_names_[i] + ".txt");
+      }
+  }
+
+  void controller_interface::record(int file_number, double duration)
+  {
+    if(tick < tick_init + duration*hz_ + hz_)
+    {
+      files_[file_number]
+      << pose_.transpose() << " " 
+      << velocity_.transpose()
+      << std::endl;
+    }
+    else std::cout<<"end record"<<std::endl;
   }
 
 
@@ -47,7 +71,8 @@ controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
     pose_(2) = tf::getYaw(msg->pose.pose.orientation);
 
     velocity_(0) = msg->twist.twist.linear.x;
-    velocity_(1) = msg->twist.twist.angular.z;
+    velocity_(1) = msg->twist.twist.linear.y;
+    velocity_(2) = msg->twist.twist.angular.z;
   }
 
   void controller_interface::Getstate(Eigen::VectorXd& pose, Eigen::VectorXd& velocity)
@@ -58,12 +83,14 @@ controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
 
     velocity(0) = velocity_(0);
     velocity(1) = velocity_(1);
+    velocity(2) = velocity_(2);
+    record(7, 50);
   }
 
   void controller_interface::SetInitialState()
   {
     pose_.Zero(3);
-    velocity_.Zero(2);
+    velocity_.Zero(3);
     cmd_vel_.linear.x = 0;
     cmd_vel_.linear.y = 0;
     cmd_vel_.linear.z = 0;
@@ -103,7 +130,7 @@ controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
   void controller_interface::sim_time_cb(const std_msgs::Float32ConstPtr& msg)
   {
     sim_time_ = msg->data;
-    tick = (sim_time_*100)/(SIM_DT*100);    
+    tick = (sim_time_*100)/(1/hz_*100);    
   }
 
   void controller_interface::sim_step_done_cb(const std_msgs::BoolConstPtr &msg)
@@ -117,6 +144,7 @@ controller_interface::controller_interface(ros::NodeHandle nh_,double hz_):
     std_msgs::Bool msg;
     msg.data = true;
     vrep_sim_start_pub_.publish(msg);
+    tick_init = tick;
   }
 
   void controller_interface::vrepStop()

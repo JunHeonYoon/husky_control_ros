@@ -13,10 +13,12 @@
 #include <eigen3/Eigen/Eigen>
 #include <tf/tf.h>
 #include <math.h>
+#include <fstream>
+#include <memory>
+#include <iostream>
 
 
 #define TOTAL_DOF 4 
-#define SIM_DT    0.0333333 // 33.333ms
 const std::string JOINT_NAME[TOTAL_DOF] = {"front_left_wheel", "front_right_wheel", "rear_left_wheel", "rear_right_wheel"};
 
 
@@ -116,6 +118,7 @@ const std::string JOINT_NAME[TOTAL_DOF] = {"front_left_wheel", "front_right_whee
     bool sim_step_done_;
     float sim_time_; // from v-rep simulation time
     int tick;
+    int tick_init;
     ros::Rate rate_;
     Eigen::VectorXd pose_;  // x, y, theta
     Eigen::VectorXd velocity_;  // x_dot, y_dot, theta_dot
@@ -126,6 +129,16 @@ const std::string JOINT_NAME[TOTAL_DOF] = {"front_left_wheel", "front_right_whee
     double final_time;    
     int vrep_sim_status;
     float exec_time_;
+    float hz_;
+
+    constexpr static int NUM_FILES{10};
+    std::ofstream files_[NUM_FILES];
+    const std::string file_names_[NUM_FILES]
+    {"BULLET_CYLINDER", "ODE_CYLINDER","VOLTEX_CYLINDER", "NEWTON_CYLINDER",
+     "BULLET_SPHERE", "ODE_SPHERE", "VOLTEX_SPHERE", "NEWTON_SPHERE"};
+
+    void initFile();
+    void record(int file_number, double duration);
     };
 
 #endif
